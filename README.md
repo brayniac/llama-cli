@@ -24,16 +24,26 @@ LLaMA CLI is a powerful terminal-based tool that connects directly to your local
    npm install -g llama-cli
    ```
 
-3. **Set your llama.cpp server URL:**
+3. **Configure your llama.cpp server URL (choose one method):**
 
+   **Option A: Environment variable (temporary)**
    ```bash
    export LLAMACPP_BASE_URL="http://localhost:8080"
+   llama
    ```
 
-   Or if your server is on a different host:
-
+   **Option B: CLI option (saves to settings for future use)**
    ```bash
-   export LLAMACPP_BASE_URL="http://10.3.0.0:8080"
+   llama --llamacpp-base-url="http://10.3.0.0:8080"
+   ```
+
+   **Option C: Settings file (persistent)**
+   
+   Create `~/.llama/settings.json`:
+   ```json
+   {
+     "llamacppBaseUrl": "http://10.3.0.0:8080"
+   }
    ```
 
 4. **Run the CLI:**
@@ -42,28 +52,28 @@ LLaMA CLI is a powerful terminal-based tool that connects directly to your local
    llama
    ```
 
-You are now ready to use LLaMA CLI! The tool will automatically detect your model from the `/v1/models` endpoint.
+You are now ready to use LLaMA CLI! Once configured, you can just run `llama` without setting environment variables. The tool will automatically detect your model from the `/v1/models` endpoint.
 
 For other authentication methods, including Google Workspace accounts, see the [authentication](./docs/cli/authentication.md) guide.
 
 ## Examples
 
-Once the CLI is running, you can start interacting with Gemini from your shell.
+Once the CLI is running, you can start interacting with your local LLM from your shell.
 
 You can start a project from a new directory:
 
 ```sh
 $ cd new-project/
-$ gemini
-> Write me a Gemini Discord bot that answers questions using a FAQ.md file I will provide
+$ llama
+> Write me a Discord bot that answers questions using a FAQ.md file I will provide
 ```
 
 Or work with an existing project:
 
 ```sh
-$ git clone https://github.com/google-gemini/gemini-cli
-$ cd gemini-cli
-$ gemini
+$ git clone https://github.com/your-org/your-project
+$ cd your-project
+$ llama
 > Give me a summary of all of the changes that went in yesterday
 ```
 
@@ -79,7 +89,7 @@ $ gemini
 
 ### Explore a new codebase
 
-Start by `cd`ing into an existing or newly-cloned repository and running `gemini`.
+Start by `cd`ing into an existing or newly-cloned repository and running `llama`.
 
 ```text
 > Describe the main pieces of this system's architecture.
@@ -121,10 +131,6 @@ Use MCP servers to integrate your local system tools with your enterprise collab
 > Organise my PDF invoices by month of expenditure.
 ```
 
-## Gemini APIs
+## Local AI with llama.cpp
 
-This project leverages the Gemini APIs to provide AI capabilities. For details on the terms of service governing the Gemini API, please refer to the terms for the access mechanism you are using:
-
-- [Gemini API key](https://ai.google.dev/gemini-api/terms)
-- [Gemini Code Assist](https://developers.google.com/gemini-code-assist/resources/privacy-notices)
-- [Vertex AI](https://cloud.google.com/terms/service-terms)
+This project connects to your local llama.cpp server, ensuring all processing happens on your own hardware. Your data never leaves your machine, providing complete privacy and control over your AI interactions.
