@@ -1,6 +1,14 @@
 # LLaMA CLI
 
-A command-line interface for interacting with llama.cpp servers using OpenAI-compatible endpoints.
+A command-line interface for interacting with llama.cpp servers using
+OpenAI-compatible endpoints. This allows for running this CLI tool with all
+processing on your own hardware. Your data never leaves your machine, providing
+complete privacy and control over your AI interactions.
+
+This project is a hard fork of https://github.com/google-gemini/gemini-cli
+Thanks to those who worked on the original.
+
+This is a vibe-coded fork. Enjoy at your own risk!
 
 ## Overview
 
@@ -34,7 +42,7 @@ LLaMA CLI is a powerful terminal-based tool that connects directly to your local
 
    **Option B: CLI option (saves to settings for future use)**
    ```bash
-   llama --llamacpp-base-url="http://10.3.0.0:8080"
+   llama --llamacpp-base-url="http://localhost:8080"
    ```
 
    **Option C: Settings file (persistent)**
@@ -42,7 +50,7 @@ LLaMA CLI is a powerful terminal-based tool that connects directly to your local
    Create `~/.llama/settings.json`:
    ```json
    {
-     "llamacppBaseUrl": "http://10.3.0.0:8080"
+     "llamacppBaseUrl": "http://localhost:8080"
    }
    ```
 
