@@ -1,7 +1,7 @@
 {
-  "name": "@google/gemini-cli-core",
+  "name": "llama-cli-core",
   "version": "0.1.1",
-  "description": "Gemini CLI Server",
+  "description": "LLaMA CLI Core - Core library for llama.cpp integration",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

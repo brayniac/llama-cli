@@ -13,12 +13,12 @@ import {
   BugCommandSettings,
   TelemetrySettings,
   AuthType,
-} from '@google/gemini-cli-core';
+} from 'llama-cli-core';
 import stripJsonComments from 'strip-json-comments';
 import { DefaultLight } from '../ui/themes/default-light.js';
 import { DefaultDark } from '../ui/themes/default.js';
 
-export const SETTINGS_DIRECTORY_NAME = '.gemini';
+export const SETTINGS_DIRECTORY_NAME = '.llama';
 export const USER_SETTINGS_DIR = path.join(homedir(), SETTINGS_DIRECTORY_NAME);
 export const USER_SETTINGS_PATH = path.join(USER_SETTINGS_DIR, 'settings.json');
 
@@ -63,6 +63,9 @@ export interface Settings {
 
   // UI setting. Does not display the ANSI-controlled terminal title.
   hideWindowTitle?: boolean;
+
+  // LLaMA CLI specific settings
+  llamacppBaseUrl?: string;
 
   // Add other settings here.
 }

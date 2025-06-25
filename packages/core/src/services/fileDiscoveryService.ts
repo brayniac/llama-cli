@@ -8,7 +8,7 @@ import { GitIgnoreParser, GitIgnoreFilter } from '../utils/gitIgnoreParser.js';
 import { isGitRepository } from '../utils/gitUtils.js';
 import * as path from 'path';
 
-const GEMINI_IGNORE_FILE_NAME = '.geminiignore';
+const GEMINI_IGNORE_FILE_NAME = '.llamaignore';
 
 export interface FilterFilesOptions {
   respectGitIgnore?: boolean;
@@ -85,7 +85,7 @@ export class FileDiscoveryService {
   }
 
   /**
-   * Returns loaded patterns from .geminiignore
+   * Returns loaded patterns from .llamaignore
    */
   getGeminiIgnorePatterns(): string[] {
     return this.geminiIgnoreFilter?.getPatterns() ?? [];

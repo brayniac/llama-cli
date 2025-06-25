@@ -18,7 +18,7 @@ import {
   DEFAULT_GEMINI_EMBEDDING_MODEL,
   FileDiscoveryService,
   TelemetryTarget,
-} from '@google/gemini-cli-core';
+} from 'llama-cli-core';
 import { Settings } from './settings.js';
 
 import { Extension } from './extension.js';
@@ -125,7 +125,7 @@ async function parseArguments(): Promise<CliArgs> {
     })
     .option('llamacpp-base-url', {
       type: 'string',
-      description: 'Base URL for llama.cpp server (e.g., http://10.3.0.0:8080)',
+      description: 'Base URL for llama.cpp server (e.g., http://10.3.0.0:8080). This will be saved to settings for future use.',
     })
     .option('checkpointing', {
       alias: 'c',
@@ -250,7 +250,7 @@ export async function loadCliConfig(
     bugCommand: settings.bugCommand,
     model: argv.model!,
     extensionContextFilePaths,
-    llamacppBaseUrl: argv['llamacpp-base-url'] || process.env.LLAMACPP_BASE_URL,
+    llamacppBaseUrl: argv['llamacpp-base-url'] || process.env.LLAMACPP_BASE_URL || settings.llamacppBaseUrl,
   });
 }
 

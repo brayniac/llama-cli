@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The Gemini CLI is a Node.js-based command-line AI workflow tool that provides AI-powered automation using Google's Gemini AI model. It's built as a monorepo with two main packages and uses React with Ink for terminal UI.
+LLaMA CLI is a Node.js-based command-line tool that connects to llama.cpp servers via OpenAI-compatible endpoints. It's built as a monorepo with two main packages and uses React with Ink for terminal UI. The tool automatically detects models from `/v1/models` and provides a rich interactive experience for local LLM workflows.
 
 ## Development Commands
 

@@ -1,5 +1,5 @@
 {
-  "name": "@google/gemini-cli",
+  "name": "llama-cli",
   "version": "0.1.1",
   "type": "module",
   "workspaces": [
@@ -48,7 +48,7 @@
     "start:gcp": "concurrently --raw --kill-others \"npm run telemetry -- --target=gcp\" \"npm start\""
   },
   "bin": {
-    "gemini": "bundle/gemini.js"
+    "llama": "bundle/llama.js"
   },
   "files": [
     "bundle/",
@@ -80,6 +80,6 @@
     "yargs": "^17.7.2"
   },
   "dependencies": {
-    "@google/gemini-cli": "^0.1.1"
+    "llama-cli": "^0.1.1"
   }
 }

@@ -1,52 +1,48 @@
-# Gemini CLI
+# LLaMA CLI
 
-[![Gemini CLI CI](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml)
+A command-line interface for interacting with llama.cpp servers using OpenAI-compatible endpoints.
 
-![Gemini CLI Screenshot](./docs/assets/gemini-screenshot.png)
+## Overview
 
-This repository contains the Gemini CLI, a command-line AI workflow tool that connects to your
-tools, understands your code and accelerates your workflows.
+LLaMA CLI is a powerful terminal-based tool that connects directly to your local llama.cpp server, providing:
 
-With the Gemini CLI you can:
-
-- Query and edit large codebases in and beyond Gemini's 1M token context window.
-- Generate new apps from PDFs or sketches, using Gemini's multimodal capabilities.
-- Automate operational tasks, like querying pull requests or handling complex rebases.
-- Use tools and MCP servers to connect new capabilities, including [media generation with Imagen,
-  Veo or Lyria](https://github.com/GoogleCloudPlatform/vertex-ai-creative-studio/tree/main/experiments/mcp-genmedia)
-- Ground your queries with the [Google Search](https://ai.google.dev/gemini-api/docs/grounding)
-  tool, built in to Gemini.
+- **Direct llama.cpp integration** - Connect to any llama.cpp server via OpenAI-compatible endpoints
+- **Auto-model detection** - Automatically detects and displays your currently loaded model  
+- **Rich terminal UI** - Interactive command-line interface built with React and Ink
+- **Tool ecosystem** - File operations, code editing, and extensible tool support
+- **Local-first** - All processing happens on your local llama.cpp server
 
 ## Quickstart
 
-1. **Prerequisites:** Ensure you have [Node.js version 18](https://nodejs.org/en/download) or higher installed.
-2. **Run the CLI:** Execute the following command in your terminal:
+1. **Prerequisites:** 
+   - [Node.js version 18](https://nodejs.org/en/download) or higher
+   - A running [llama.cpp server](https://github.com/ggerganov/llama.cpp/tree/master/examples/server) with OpenAI-compatible endpoints
+
+2. **Install the CLI:**
 
    ```bash
-   npx https://github.com/google-gemini/gemini-cli
+   npm install -g llama-cli
    ```
 
-   Or install it with:
+3. **Set your llama.cpp server URL:**
 
    ```bash
-   npm install -g @google/gemini-cli
+   export LLAMACPP_BASE_URL="http://localhost:8080"
    ```
 
-3. **Pick a color theme**
-4. **Authenticate:** When prompted, sign in with your personal Google account. This will grant you up to 60 model requests per minute and 1,000 model requests per day using Gemini 2.5 Pro.
-
-You are now ready to use the Gemini CLI!
-
-### For advanced use or increased limits:
-
-If you need to use a specific model or require a higher request capacity, you can use an API key:
-
-1. Generate a key from [Google AI Studio](https://aistudio.google.com/apikey).
-2. Set it as an environment variable in your terminal. Replace `YOUR_API_KEY` with your generated key.
+   Or if your server is on a different host:
 
    ```bash
-   export GEMINI_API_KEY="YOUR_API_KEY"
+   export LLAMACPP_BASE_URL="http://10.3.0.0:8080"
    ```
+
+4. **Run the CLI:**
+
+   ```bash
+   llama
+   ```
+
+You are now ready to use LLaMA CLI! The tool will automatically detect your model from the `/v1/models` endpoint.
 
 For other authentication methods, including Google Workspace accounts, see the [authentication](./docs/cli/authentication.md) guide.
 

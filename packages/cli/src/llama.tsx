@@ -33,7 +33,7 @@ import {
   sessionId,
   logUserPrompt,
   AuthType,
-} from '@google/gemini-cli-core';
+} from 'llama-cli-core';
 import { validateAuthMethod } from './config/auth.js';
 import { setMaxSizedBoxDebugging } from './ui/components/shared/MaxSizedBox.js';
 
@@ -100,10 +100,34 @@ export async function main() {
 
   const extensions = loadExtensions(workspaceRoot);
   const config = await loadCliConfig(settings.merged, extensions, sessionId);
+  
+  // Save CLI-provided base URL to settings for future use
+  if (config.llamacppBaseUrl && 
+      config.llamacppBaseUrl !== settings.merged.llamacppBaseUrl &&
+      config.llamacppBaseUrl !== process.env.LLAMACPP_BASE_URL) {
+    settings.setValue(
+      SettingScope.User,
+      'llamacppBaseUrl',
+      config.llamacppBaseUrl,
+    );
+  }
 
   // Always use llama.cpp server when LLAMACPP_BASE_URL is set, otherwise use stored setting or default
   if (process.env.LLAMACPP_BASE_URL) {
     // Environment variable takes precedence - always use llama.cpp when base URL is provided
+    settings.setValue(
+      SettingScope.User,
+      'selectedAuthType',
+      AuthType.USE_LLAMACPP_SERVER,
+    );
+    // Store the base URL in settings for convenience
+    settings.setValue(
+      SettingScope.User,
+      'llamacppBaseUrl',
+      process.env.LLAMACPP_BASE_URL,
+    );
+  } else if (settings.merged.llamacppBaseUrl && !settings.merged.selectedAuthType) {
+    // Use stored base URL if no environment variable is set
     settings.setValue(
       SettingScope.User,
       'selectedAuthType',
@@ -282,7 +306,7 @@ async function validateNonInterActiveAuth(
     selectedAuthType = AuthType.USE_LLAMACPP_SERVER;
   } else if (!selectedAuthType) {
     console.error(
-      'Please set LLAMACPP_BASE_URL environment variable (e.g., LLAMACPP_BASE_URL=http://10.3.0.0:8080) before running',
+      'Please set LLAMACPP_BASE_URL environment variable (e.g., LLAMACPP_BASE_URL=http://10.3.0.0:8080) or configure llamacppBaseUrl in your settings before running',
     );
     process.exit(1);
   }

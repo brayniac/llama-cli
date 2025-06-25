@@ -11,7 +11,7 @@ import {
   Config,
   clearCachedCredentialFile,
   getErrorMessage,
-} from '@google/gemini-cli-core';
+} from 'llama-cli-core';
 
 async function performAuthFlow(authMethod: AuthType, config: Config) {
   await config.refreshAuth(authMethod);

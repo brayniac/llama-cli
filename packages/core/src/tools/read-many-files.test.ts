@@ -28,7 +28,7 @@ describe('ReadManyFilesTool', () => {
     tempDirOutsideRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), 'read-many-files-external-'),
     );
-    fs.writeFileSync(path.join(tempRootDir, '.geminiignore'), 'foo.*');
+    fs.writeFileSync(path.join(tempRootDir, '.llamaignore'), 'foo.*');
     const fileService = new FileDiscoveryService(tempRootDir);
     const mockConfig = {
       getFileService: () => fileService,
@@ -363,7 +363,7 @@ describe('ReadManyFilesTool', () => {
       ]);
     });
 
-    it('should return error if path is ignored by a .geminiignore pattern', async () => {
+    it('should return error if path is ignored by a .llamaignore pattern', async () => {
       createFile('foo.bar', '');
       createFile('bar.ts', '');
       createFile('foo.quux', '');
