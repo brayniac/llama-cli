@@ -12,7 +12,7 @@ import { existsSync, readFileSync } from 'fs';
 
 const projectRoot = join(import.meta.dirname, '..');
 
-const SETTINGS_DIRECTORY_NAME = '.gemini';
+const SETTINGS_DIRECTORY_NAME = '.llama';
 const USER_SETTINGS_DIR = join(
   process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH || '',
   SETTINGS_DIRECTORY_NAME,
@@ -49,7 +49,7 @@ if (!settingsTarget) {
 }
 
 let target = settingsTarget || 'local';
-const allowedTargets = ['local', 'gcp'];
+const allowedTargets = ['local'];
 
 const targetArg = process.argv.find((arg) => arg.startsWith('--target='));
 if (targetArg) {
@@ -72,7 +72,7 @@ if (targetArg) {
 const scriptPath = join(
   projectRoot,
   'scripts',
-  target === 'gcp' ? 'telemetry_gcp.js' : 'local_telemetry.js',
+  'local_telemetry.js',
 );
 
 try {

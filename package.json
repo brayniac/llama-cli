@@ -5,7 +5,7 @@
   "workspaces": [
     "packages/*"
   ],
-  "repository": "google-gemini/gemini-cli",
+  "repository": "brayniac/llama-cli",
   "config": {
     "sandboxImageUri": "us-docker.pkg.dev/gemini-code-dev/gemini-cli/sandbox:0.1.1"
   },
@@ -45,7 +45,7 @@
     "publish:npm": "npm publish --workspaces ${NPM_PUBLISH_TAG:+--tag=$NPM_PUBLISH_TAG} ${NPM_DRY_RUN:+--dry-run}",
     "publish:release": "npm run build:packages && npm run prepare:cli-packagejson && npm run build:docker && npm run publish:sandbox && npm run publish:npm",
     "telemetry": "node scripts/telemetry.js",
-    "start:gcp": "concurrently --raw --kill-others \"npm run telemetry -- --target=gcp\" \"npm start\""
+    "start:local": "concurrently --raw --kill-others \"npm run telemetry -- --target=local\" \"npm start\""
   },
   "bin": {
     "llama": "bundle/llama.js"

@@ -109,9 +109,9 @@ async function parseArguments(): Promise<CliArgs> {
     })
     .option('telemetry-target', {
       type: 'string',
-      choices: ['local', 'gcp'],
+      choices: ['local'],
       description:
-        'Set the telemetry target (local or gcp). Overrides settings files.',
+        'Set the telemetry target (local only). Overrides settings files.',
     })
     .option('telemetry-otlp-endpoint', {
       type: 'string',

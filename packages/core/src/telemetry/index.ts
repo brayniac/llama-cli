@@ -5,7 +5,6 @@
  */
 
 export enum TelemetryTarget {
-  GCP = 'gcp',
   LOCAL = 'local',
 }
 

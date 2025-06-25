@@ -31,9 +31,9 @@ function getContainerPath(hostPath: string): string {
   return hostPath;
 }
 
-const LOCAL_DEV_SANDBOX_IMAGE_NAME = 'gemini-cli-sandbox';
-const SANDBOX_NETWORK_NAME = 'gemini-cli-sandbox';
-const SANDBOX_PROXY_NAME = 'gemini-cli-sandbox-proxy';
+const LOCAL_DEV_SANDBOX_IMAGE_NAME = 'llama-cli-sandbox';
+const SANDBOX_NETWORK_NAME = 'llama-cli-sandbox';
+const SANDBOX_PROXY_NAME = 'llama-cli-sandbox-proxy';
 const BUILTIN_SEATBELT_PROFILES = [
   'permissive-open',
   'permissive-closed',
@@ -172,8 +172,8 @@ function entrypoint(workdir: string): string[] {
         ? 'npm run debug --'
         : 'npm rebuild && npm run start --'
       : process.env.DEBUG
-        ? `node --inspect-brk=0.0.0.0:${process.env.DEBUG_PORT || '9229'} $(which gemini)`
-        : 'gemini';
+        ? `node --inspect-brk=0.0.0.0:${process.env.DEBUG_PORT || '9229'} $(which llama)`
+        : 'llama';
 
   const args = [...shellCmds, cliCmd, ...cliArgs];
 
@@ -314,14 +314,14 @@ export async function start_sandbox(
   const workdir = path.resolve(process.cwd());
   const containerWorkdir = getContainerPath(workdir);
 
-  // if BUILD_SANDBOX is set, then call scripts/build_sandbox.js under gemini-cli repo
+  // if BUILD_SANDBOX is set, then call scripts/build_sandbox.js under llama-cli repo
   //
-  // note this can only be done with binary linked from gemini-cli repo
+  // note this can only be done with binary linked from llama-cli repo
   if (process.env.BUILD_SANDBOX) {
-    if (!gcPath.includes('gemini-cli/packages/')) {
+    if (!gcPath.includes('llama-cli/packages/')) {
       console.error(
-        'ERROR: cannot build sandbox using installed gemini binary; ' +
-          'run `npm link ./packages/cli` under gemini-cli repo to switch to linked binary.',
+        'ERROR: cannot build sandbox using installed llama binary; ' +
+          'run `npm link ./packages/cli` under llama-cli repo to switch to linked binary.',
       );
       process.exit(1);
     } else {
@@ -354,8 +354,8 @@ export async function start_sandbox(
   if (!(await ensureSandboxImageIsPresent(config.command, image))) {
     const remedy =
       image === LOCAL_DEV_SANDBOX_IMAGE_NAME
-        ? 'Try running `npm run build:all` or `npm run build:sandbox` under the gemini-cli repo to build it locally, or check the image name and your network connection.'
-        : 'Please check the image name, your network connection, or notify gemini-cli-dev@google.com if the issue persists.';
+        ? 'Try running `npm run build:all` or `npm run build:sandbox` under the llama-cli repo to build it locally, or check the image name and your network connection.'
+        : 'Please check the image name, your network connection, or contact the llama-cli maintainers if the issue persists.';
     console.error(
       `ERROR: Sandbox image '${image}' is missing or could not be pulled. ${remedy}`,
     );

@@ -200,12 +200,12 @@ describe('loadCliConfig telemetry', () => {
   });
 
   it('should prioritize --telemetry-target CLI flag over settings', async () => {
-    process.argv = ['node', 'script.js', '--telemetry-target', 'gcp'];
+    process.argv = ['node', 'script.js', '--telemetry-target', 'local'];
     const settings: Settings = {
       telemetry: { target: ServerConfig.DEFAULT_TELEMETRY_TARGET },
     };
     const config = await loadCliConfig(settings, [], 'test-session');
-    expect(config.getTelemetryTarget()).toBe('gcp');
+    expect(config.getTelemetryTarget()).toBe('local');
   });
 
   it('should use default target if no target is provided via CLI or settings', async () => {
