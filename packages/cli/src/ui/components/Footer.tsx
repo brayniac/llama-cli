@@ -12,6 +12,23 @@ import { ConsoleSummaryDisplay } from './ConsoleSummaryDisplay.js';
 import process from 'node:process';
 import { MemoryUsageDisplay } from './MemoryUsageDisplay.js';
 
+function extractModelName(modelPath: string): string {
+  // Extract model name from path like "/mnt/llm-models/GGUF/google/gemma-3-27b-it/gemma-3-27b-it.Q8_0.gguf"
+  const parts = modelPath.split('/');
+  const filename = parts[parts.length - 1];
+  
+  // Remove .gguf extension
+  const nameWithoutExt = filename.replace(/\.gguf$/, '');
+  
+  // Try to extract brand/model pattern
+  const match = nameWithoutExt.match(/^(.+?)[-_](.+)$/);
+  if (match) {
+    return match[0]; // Return the full name without extension
+  }
+  
+  return nameWithoutExt;
+}
+
 interface FooterProps {
   model: string;
   targetDir: string;
@@ -41,6 +58,18 @@ export const Footer: React.FC<FooterProps> = ({
 }) => {
   const limit = tokenLimit(model);
   const percentage = totalTokenCount / limit;
+
+  // Get friendly display name for model
+  const displayModel = React.useMemo(() => {
+    // Check if this looks like a llama.cpp model path
+    if (
+      model.includes('/') &&
+      (model.includes('.gguf') || model.includes('llm-models'))
+    ) {
+      return extractModelName(model);
+    }
+    return model;
+  }, [model]);
 
   return (
     <Box marginTop={1} justifyContent="space-between" width="100%">
@@ -83,7 +112,7 @@ export const Footer: React.FC<FooterProps> = ({
       <Box alignItems="center">
         <Text color={Colors.AccentBlue}>
           {' '}
-          {model}{' '}
+          {displayModel}{' '}
           <Text color={Colors.Gray}>
             ({((1 - percentage) * 100).toFixed(0)}% context left)
           </Text>

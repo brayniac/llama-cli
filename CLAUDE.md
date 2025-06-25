@@ -11,6 +11,7 @@ The Gemini CLI is a Node.js-based command-line AI workflow tool that provides AI
 ### Essential Commands
 
 **Build and Bundle:**
+
 ```bash
 npm run build           # Build all packages
 npm run bundle         # Generate bundled CLI executable at bundle/gemini.js
@@ -18,6 +19,7 @@ npm run build:all      # Build packages and sandbox
 ```
 
 **Testing:**
+
 ```bash
 npm test               # Run unit tests for all packages
 npm run test:ci        # Run tests with coverage
@@ -26,6 +28,7 @@ npm run test:integration:all  # Run all integration tests (none, docker, podman)
 ```
 
 **Code Quality:**
+
 ```bash
 npm run lint           # Lint all code
 npm run lint:fix       # Fix linting issues
@@ -34,6 +37,7 @@ npm run format         # Format code with Prettier
 ```
 
 **Development:**
+
 ```bash
 npm start              # Start the CLI in development mode
 npm run debug          # Start with debugger attached
@@ -43,12 +47,14 @@ npm run preflight      # Full CI pipeline locally (clean, install, format, lint,
 ### Package-Specific Commands
 
 **CLI Package (`packages/cli/`):**
+
 ```bash
 npm run build:cli      # Build only CLI package
 npm run test --workspace packages/cli  # Test CLI package
 ```
 
 **Core Package (`packages/core/`):**
+
 ```bash
 npm run build:core     # Build only core package
 npm run test --workspace packages/core  # Test core package
@@ -57,6 +63,7 @@ npm run test --workspace packages/core  # Test core package
 ### Integration Testing
 
 Run integration tests with different sandbox configurations:
+
 ```bash
 npm run test:integration:sandbox:none    # No sandbox
 npm run test:integration:sandbox:docker  # Docker sandbox
@@ -83,6 +90,7 @@ The project uses npm workspaces with two main packages:
 ### Bundle Creation
 
 The CLI is distributed as a single executable bundle:
+
 - Entry point: `packages/cli/index.ts`
 - Output: `bundle/gemini.js`
 - Bundler: esbuild with ES module format and Node.js compatibility shims
@@ -92,6 +100,7 @@ The CLI is distributed as a single executable bundle:
 ### Built-in Tools
 
 The core package provides these tool categories:
+
 - **File Operations**: Read, write, edit, glob pattern matching
 - **Shell Execution**: Sandboxed command execution with Docker/Podman
 - **Web Integration**: Web search and content fetching
@@ -107,6 +116,7 @@ The core package provides these tool categories:
 ### Authentication
 
 Supports multiple authentication methods:
+
 - Personal Google accounts (default, rate-limited)
 - API keys from Google AI Studio
 - Google Workspace accounts
@@ -115,11 +125,13 @@ Supports multiple authentication methods:
 ## Testing Strategy
 
 ### Unit Tests
+
 - Each package has its own Vitest configuration
 - Located in `src/**/*.test.ts` within each package
 - Coverage reports available with `npm run test:ci`
 
 ### Integration Tests
+
 - Located in `integration-tests/` directory
 - Tests actual CLI functionality with different tool combinations
 - Supports multiple sandbox configurations (none, docker, podman)
@@ -128,6 +140,7 @@ Supports multiple authentication methods:
 ### Test Execution
 
 When running tests:
+
 - Unit tests: Run per-package with `vitest`
 - Integration tests: Use custom runner that spawns CLI processes
 - CI tests: Include coverage reporting and strict linting
@@ -157,6 +170,7 @@ When running tests:
 ## File Patterns
 
 ### Package Structure
+
 ```
 packages/
 ├── cli/
@@ -175,6 +189,7 @@ packages/
 ```
 
 ### Build Artifacts
+
 - `bundle/gemini.js`: Main CLI executable
 - `packages/*/dist/`: Compiled TypeScript output
 - Coverage reports in `coverage/` directories
@@ -182,6 +197,7 @@ packages/
 ## Release Process
 
 The project uses automated version binding and publishing:
+
 1. `npm run prerelease:dev`: Update versions and dependencies
 2. `npm run build:packages`: Build both packages
 3. `npm run publish:release`: Full release pipeline including Docker sandbox

@@ -53,6 +53,7 @@ interface CliArgs {
   telemetryTarget: string | undefined;
   telemetryOtlpEndpoint: string | undefined;
   telemetryLogPrompts: boolean | undefined;
+  'llamacpp-base-url': string | undefined;
 }
 
 async function parseArguments(): Promise<CliArgs> {
@@ -60,8 +61,8 @@ async function parseArguments(): Promise<CliArgs> {
     .option('model', {
       alias: 'm',
       type: 'string',
-      description: `Model`,
-      default: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+      description: `Model (auto-detected from llama.cpp server)`,
+      default: 'auto-detect',
     })
     .option('prompt', {
       alias: 'p',
@@ -121,6 +122,10 @@ async function parseArguments(): Promise<CliArgs> {
       type: 'boolean',
       description:
         'Enable or disable logging of user prompts for telemetry. Overrides settings files.',
+    })
+    .option('llamacpp-base-url', {
+      type: 'string',
+      description: 'Base URL for llama.cpp server (e.g., http://10.3.0.0:8080)',
     })
     .option('checkpointing', {
       alias: 'c',
@@ -245,6 +250,7 @@ export async function loadCliConfig(
     bugCommand: settings.bugCommand,
     model: argv.model!,
     extensionContextFilePaths,
+    llamacppBaseUrl: argv['llamacpp-base-url'] || process.env.LLAMACPP_BASE_URL,
   });
 }
 

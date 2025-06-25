@@ -29,30 +29,11 @@ export function AuthDialog({
     initialErrorMessage || null,
   );
   const allAuthItems = [
-    {
-      label: 'Login with Google',
-      value: AuthType.LOGIN_WITH_GOOGLE_PERSONAL,
-    },
-    { label: 'Gemini API Key', value: AuthType.USE_GEMINI },
-    {
-      label: 'Login with Google Workspace',
-      value: AuthType.LOGIN_WITH_GOOGLE_ENTERPRISE,
-    },
-    { label: 'Vertex AI', value: AuthType.USE_VERTEX_AI },
+    { label: 'llama.cpp Server', value: AuthType.USE_LLAMACPP_SERVER },
   ];
 
-  const isSelectedAuthInMore = allAuthItems
-    .slice(2)
-    .some((item) => item.value === settings.merged.selectedAuthType);
-
-  const [showAll, setShowAll] = useState(isSelectedAuthInMore);
-
-  const initialAuthItems = [
-    ...allAuthItems.slice(0, 2),
-    { label: 'More...', value: 'more' },
-  ];
-
-  const items = showAll ? allAuthItems : initialAuthItems;
+  // Since we only have one auth method, no need for "More..." functionality
+  const items = allAuthItems;
 
   let initialAuthIndex = items.findIndex(
     (item) => item.value === settings.merged.selectedAuthType,
@@ -63,10 +44,6 @@ export function AuthDialog({
   }
 
   const handleAuthSelect = (authMethod: string) => {
-    if (authMethod === 'more') {
-      setShowAll(true);
-      return;
-    }
     const error = validateAuthMethod(authMethod);
     if (error) {
       setErrorMessage(error);

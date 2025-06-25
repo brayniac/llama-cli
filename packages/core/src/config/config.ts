@@ -126,6 +126,7 @@ export interface ConfigParameters {
   bugCommand?: BugCommandSettings;
   model: string;
   extensionContextFilePaths?: string[];
+  llamacppBaseUrl?: string;
 }
 
 export class Config {
@@ -166,6 +167,7 @@ export class Config {
   private readonly extensionContextFilePaths: string[];
   private modelSwitchedDuringSession: boolean = false;
   flashFallbackHandler?: FlashFallbackHandler;
+  private readonly llamacppBaseUrl: string | undefined;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -207,6 +209,7 @@ export class Config {
     this.bugCommand = params.bugCommand;
     this.model = params.model;
     this.extensionContextFilePaths = params.extensionContextFilePaths ?? [];
+    this.llamacppBaseUrl = params.llamacppBaseUrl;
 
     if (params.contextFileName) {
       setGeminiMdFilename(params.contextFileName);
@@ -444,6 +447,10 @@ export class Config {
 
   getExtensionContextFilePaths(): string[] {
     return this.extensionContextFilePaths;
+  }
+
+  getLlamaCppBaseUrl(): string | undefined {
+    return this.llamacppBaseUrl;
   }
 
   async getGitService(): Promise<GitService> {

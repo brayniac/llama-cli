@@ -101,13 +101,20 @@ export async function main() {
   const extensions = loadExtensions(workspaceRoot);
   const config = await loadCliConfig(settings.merged, extensions, sessionId);
 
-  // set default fallback to gemini api key
-  // this has to go after load cli becuase thats where the env is set
-  if (!settings.merged.selectedAuthType && process.env.GEMINI_API_KEY) {
+  // Always use llama.cpp server when LLAMACPP_BASE_URL is set, otherwise use stored setting or default
+  if (process.env.LLAMACPP_BASE_URL) {
+    // Environment variable takes precedence - always use llama.cpp when base URL is provided
     settings.setValue(
       SettingScope.User,
       'selectedAuthType',
-      AuthType.USE_GEMINI,
+      AuthType.USE_LLAMACPP_SERVER,
+    );
+  } else if (!settings.merged.selectedAuthType) {
+    // No environment variable and no stored setting - default to llama.cpp
+    settings.setValue(
+      SettingScope.User,
+      'selectedAuthType',
+      AuthType.USE_LLAMACPP_SERVER,
     );
   }
 
@@ -270,17 +277,15 @@ async function validateNonInterActiveAuth(
   selectedAuthType: AuthType | undefined,
   nonInteractiveConfig: Config,
 ) {
-  // making a special case for the cli. many headless environments might not have a settings.json set
-  // so if GEMINI_API_KEY is set, we'll use that. However since the oauth things are interactive anyway, we'll
-  // still expect that exists
-  if (!selectedAuthType && !process.env.GEMINI_API_KEY) {
+  // Environment variable takes precedence over stored auth type
+  if (process.env.LLAMACPP_BASE_URL) {
+    selectedAuthType = AuthType.USE_LLAMACPP_SERVER;
+  } else if (!selectedAuthType) {
     console.error(
-      'Please set an Auth method in your .gemini/settings.json OR specify GEMINI_API_KEY env variable file before running',
+      'Please set LLAMACPP_BASE_URL environment variable (e.g., LLAMACPP_BASE_URL=http://10.3.0.0:8080) before running',
     );
     process.exit(1);
   }
-
-  selectedAuthType = selectedAuthType || AuthType.USE_GEMINI;
   const err = validateAuthMethod(selectedAuthType);
   if (err != null) {
     console.error(err);

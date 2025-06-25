@@ -16,6 +16,7 @@ import {
 import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js';
 import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
 import { getEffectiveModel } from './modelCheck.js';
+import { LlamaCppClient, LlamaCppMessage } from './llamacppClient.js';
 
 /**
  * Interface abstracting the core functionalities for generating content and counting tokens.
@@ -39,6 +40,7 @@ export enum AuthType {
   LOGIN_WITH_GOOGLE_ENTERPRISE = 'oauth-enterprise',
   USE_GEMINI = 'gemini-api-key',
   USE_VERTEX_AI = 'vertex-ai',
+  USE_LLAMACPP_SERVER = 'llamacpp-server',
 }
 
 export type ContentGeneratorConfig = {
@@ -46,6 +48,7 @@ export type ContentGeneratorConfig = {
   apiKey?: string;
   vertexai?: boolean;
   authType?: AuthType | undefined;
+  llamacppBaseUrl?: string;
 };
 
 export async function createContentGeneratorConfig(
@@ -53,92 +56,171 @@ export async function createContentGeneratorConfig(
   authType: AuthType | undefined,
   config?: { getModel?: () => string },
 ): Promise<ContentGeneratorConfig> {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  const googleApiKey = process.env.GOOGLE_API_KEY;
-  const googleCloudProject = process.env.GOOGLE_CLOUD_PROJECT;
-  const googleCloudLocation = process.env.GOOGLE_CLOUD_LOCATION;
+  // If no auth type specified, default to llama.cpp and require base URL
+  if (!authType) {
+    authType = AuthType.USE_LLAMACPP_SERVER;
+  }
 
-  // Use runtime model from config if available, otherwise fallback to parameter or default
-  const effectiveModel = config?.getModel?.() || model || DEFAULT_GEMINI_MODEL;
+  // For llama.cpp, only require the base URL
+  if (authType === AuthType.USE_LLAMACPP_SERVER) {
+    const llamacppBaseUrl = process.env.LLAMACPP_BASE_URL;
+    if (!llamacppBaseUrl) {
+      throw new Error('LLAMACPP_BASE_URL environment variable is required for llama.cpp server');
+    }
 
-  const contentGeneratorConfig: ContentGeneratorConfig = {
-    model: effectiveModel,
-    authType,
+    const effectiveModel = config?.getModel?.() || model || 'auto-detect';
+    return {
+      model: effectiveModel,
+      authType,
+      llamacppBaseUrl,
+    };
+  }
+
+  // For other auth types, throw an error since we're only supporting llama.cpp now
+  throw new Error(`Authentication type ${authType} is no longer supported. Please use llama.cpp server with LLAMACPP_BASE_URL environment variable.`);
+}
+
+function createLlamaCppContentGenerator(client: LlamaCppClient): ContentGenerator {
+  return {
+    async generateContent(request: GenerateContentParameters): Promise<GenerateContentResponse> {
+      // Convert Gemini format to simple chat format
+      const messages: LlamaCppMessage[] = [];
+      
+      // Handle ContentListUnion (can be string, Content[], or Part[])
+      const contents = Array.isArray(request.contents) ? request.contents : [request.contents];
+      
+      for (const content of contents) {
+        if (typeof content === 'string') {
+          messages.push({ role: 'user', content });
+        } else if ('role' in content) {
+          // It's a Content object
+          const role = content.role === 'model' ? 'assistant' : content.role as 'user' | 'system';
+          const text = content.parts?.map((p: any) => p.text || '').join('\n') || '';
+          if (text.trim()) {
+            messages.push({ role, content: text });
+          }
+        } else {
+          // It's a Part object
+          const text = (content as any).text || '';
+          if (text.trim()) {
+            messages.push({ role: 'user', content: text });
+          }
+        }
+      }
+
+      const response = await client.chatCompletion({
+        messages,
+        temperature: (request as any).config?.temperature,
+        max_tokens: (request as any).config?.maxOutputTokens,
+      });
+
+      const geminiResponse = new GenerateContentResponse();
+      geminiResponse.candidates = [{
+        content: {
+          role: 'model',
+          parts: [{ text: response.content }]
+        },
+        finishReason: 'STOP' as any,
+        index: 0,
+      }];
+      geminiResponse.usageMetadata = response.usage ? {
+        promptTokenCount: response.usage.prompt_tokens,
+        candidatesTokenCount: response.usage.completion_tokens,
+        totalTokenCount: response.usage.total_tokens,
+      } : undefined;
+      
+      return geminiResponse;
+    },
+
+    generateContentStream(request: GenerateContentParameters): Promise<AsyncGenerator<GenerateContentResponse>> {
+      return Promise.resolve((async function* () {
+        // Convert Gemini format to simple chat format
+        const messages: LlamaCppMessage[] = [];
+        
+        // Handle ContentListUnion (can be string, Content[], or Part[])
+        const contents = Array.isArray(request.contents) ? request.contents : [request.contents];
+        
+        for (const content of contents) {
+          if (typeof content === 'string') {
+            messages.push({ role: 'user', content });
+          } else if ('role' in content) {
+            // It's a Content object
+            const role = content.role === 'model' ? 'assistant' : content.role as 'user' | 'system';
+            const text = content.parts?.map((p: any) => p.text || '').join('\n') || '';
+            if (text.trim()) {
+              messages.push({ role, content: text });
+            }
+          } else {
+            // It's a Part object
+            const text = (content as any).text || '';
+            if (text.trim()) {
+              messages.push({ role: 'user', content: text });
+            }
+          }
+        }
+
+        for await (const chunk of client.chatCompletionStream({
+          messages,
+          temperature: (request as any).config?.temperature,
+          max_tokens: (request as any).config?.maxOutputTokens,
+        })) {
+          const geminiResponse = new GenerateContentResponse();
+          geminiResponse.candidates = [{
+            content: {
+              role: 'model',
+              parts: [{ text: chunk }]
+            },
+            finishReason: undefined,
+            index: 0,
+          }];
+          yield geminiResponse;
+        }
+      })());
+    },
+
+    async countTokens(request: CountTokensParameters): Promise<CountTokensResponse> {
+      // Simple token estimation: ~4 characters per token
+      // Handle ContentListUnion (can be string, Content[], or Part[])
+      const contents = Array.isArray(request.contents) ? request.contents : [request.contents];
+      
+      let contentText = '';
+      for (const content of contents) {
+        if (typeof content === 'string') {
+          contentText += content + ' ';
+        } else if ('role' in content) {
+          // It's a Content object
+          const text = content.parts?.map((p: any) => p.text || '').join(' ') || '';
+          contentText += text + ' ';
+        } else {
+          // It's a Part object
+          const text = (content as any).text || '';
+          contentText += text + ' ';
+        }
+      }
+      
+      return {
+        totalTokens: Math.ceil(contentText.length / 4),
+      };
+    },
+
+    async embedContent(_request: EmbedContentParameters): Promise<EmbedContentResponse> {
+      throw new Error('Embedding is not supported by llama.cpp server');
+    },
   };
-
-  // if we are using google auth nothing else to validate for now
-  if (authType === AuthType.LOGIN_WITH_GOOGLE_PERSONAL) {
-    return contentGeneratorConfig;
-  }
-
-  // if its enterprise make sure we have a cloud project
-  if (
-    authType === AuthType.LOGIN_WITH_GOOGLE_ENTERPRISE &&
-    !!googleCloudProject
-  ) {
-    return contentGeneratorConfig;
-  }
-
-  //
-  if (authType === AuthType.USE_GEMINI && geminiApiKey) {
-    contentGeneratorConfig.apiKey = geminiApiKey;
-    contentGeneratorConfig.model = await getEffectiveModel(
-      contentGeneratorConfig.apiKey,
-      contentGeneratorConfig.model,
-    );
-
-    return contentGeneratorConfig;
-  }
-
-  if (
-    authType === AuthType.USE_VERTEX_AI &&
-    !!googleApiKey &&
-    googleCloudProject &&
-    googleCloudLocation
-  ) {
-    contentGeneratorConfig.apiKey = googleApiKey;
-    contentGeneratorConfig.vertexai = true;
-    contentGeneratorConfig.model = await getEffectiveModel(
-      contentGeneratorConfig.apiKey,
-      contentGeneratorConfig.model,
-    );
-
-    return contentGeneratorConfig;
-  }
-
-  return contentGeneratorConfig;
 }
 
 export async function createContentGenerator(
   config: ContentGeneratorConfig,
 ): Promise<ContentGenerator> {
-  const version = process.env.CLI_VERSION || process.version;
-  const httpOptions = {
-    headers: {
-      'User-Agent': `GeminiCLI/${version} (${process.platform}; ${process.arch})`,
-    },
-  };
-  if (
-    config.authType === AuthType.LOGIN_WITH_GOOGLE_PERSONAL ||
-    config.authType === AuthType.LOGIN_WITH_GOOGLE_ENTERPRISE
-  ) {
-    return createCodeAssistContentGenerator(httpOptions, config.authType);
+  // Only support llama.cpp now
+  if (config.authType !== AuthType.USE_LLAMACPP_SERVER || !config.llamacppBaseUrl) {
+    throw new Error('Only llama.cpp server authentication is supported. Please set LLAMACPP_BASE_URL environment variable.');
   }
 
-  if (
-    config.authType === AuthType.USE_GEMINI ||
-    config.authType === AuthType.USE_VERTEX_AI
-  ) {
-    const googleGenAI = new GoogleGenAI({
-      apiKey: config.apiKey === '' ? undefined : config.apiKey,
-      vertexai: config.vertexai,
-      httpOptions,
-    });
-
-    return googleGenAI.models;
-  }
-
-  throw new Error(
-    `Error creating contentGenerator: Unsupported authType: ${config.authType}`,
-  );
+  const client = new LlamaCppClient(config.llamacppBaseUrl);
+  await client.initialize();
+  // Update the config with the actual model name
+  config.model = client.getDisplayName();
+  // Return a simplified wrapper that implements ContentGenerator interface
+  return createLlamaCppContentGenerator(client);
 }
