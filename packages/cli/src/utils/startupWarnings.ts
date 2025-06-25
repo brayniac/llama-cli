@@ -9,7 +9,7 @@ import os from 'os';
 import { join as pathJoin } from 'node:path';
 import { getErrorMessage } from 'llama-cli-core';
 
-const warningsFilePath = pathJoin(os.tmpdir(), 'gemini-cli-warnings.txt');
+const warningsFilePath = pathJoin(os.tmpdir(), 'llama-cli-warnings.txt');
 
 export async function getStartupWarnings(): Promise<string[]> {
   try {
