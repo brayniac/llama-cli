@@ -65,8 +65,6 @@ import {
 import { useGitBranchName } from './hooks/useGitBranchName.js';
 import { useTextBuffer } from './components/shared/text-buffer.js';
 import * as fs from 'fs';
-import { UpdateNotification } from './components/UpdateNotification.js';
-import { checkForUpdates } from './utils/updateCheck.js';
 import ansiEscapes from 'ansi-escapes';
 import { OverflowProvider } from './contexts/OverflowContext.js';
 import { ShowMoreLines } from './components/ShowMoreLines.js';
@@ -90,7 +88,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   const { stdout } = useStdout();
 
   useEffect(() => {
-    checkForUpdates().then(setUpdateMessage);
+    // Privacy-first: no automatic update checks
   }, []);
 
   const { history, addItem, clearItems, loadHistory } = useHistory();
@@ -602,7 +600,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
             <Box flexDirection="column" key="header">
               <Header terminalWidth={terminalWidth} />
               <Tips config={config} />
-              {updateMessage && <UpdateNotification message={updateMessage} />}
+              {/* Privacy-first: no update notifications */}
             </Box>,
             ...history.map((h) => (
               <HistoryItemDisplay

@@ -9,7 +9,7 @@ import { LoadedSettings, SettingScope } from '../../config/settings.js';
 import {
   AuthType,
   Config,
-  clearCachedCredentialFile,
+  // Privacy-first: credential clearing removed with OAuth
   getErrorMessage,
 } from 'llama-cli-core';
 
@@ -65,7 +65,7 @@ Message: ${getErrorMessage(e)}`
   const handleAuthSelect = useCallback(
     async (authMethod: string | undefined, scope: SettingScope) => {
       if (authMethod) {
-        await clearCachedCredentialFile();
+        // Privacy-first: credential clearing removed with OAuth
         settings.setValue(scope, 'selectedAuthType', authMethod);
       }
       setIsAuthDialogOpen(false);
