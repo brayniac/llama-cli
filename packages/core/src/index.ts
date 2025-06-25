@@ -20,8 +20,7 @@ export * from './core/coreToolScheduler.js';
 export * from './core/nonInteractiveToolExecutor.js';
 export * from './core/llamacppClient.js';
 
-export * from './code_assist/codeAssist.js';
-export * from './code_assist/oauth2.js';
+// Privacy-first: code_assist (Google OAuth) removed
 
 // Export utilities
 export * from './utils/paths.js';

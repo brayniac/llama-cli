@@ -31,7 +31,6 @@ import {
   recordToolCallMetrics,
 } from './metrics.js';
 import { isTelemetrySdkInitialized } from './sdk.js';
-import { ClearcutLogger } from './clearcut-logger/clearcut-logger.js';
 
 const shouldLogUserPrompts = (config: Config): boolean =>
   config.getTelemetryLogPromptsEnabled();
@@ -46,7 +45,7 @@ export function logCliConfiguration(
   config: Config,
   event: StartSessionEvent,
 ): void {
-  ClearcutLogger.getInstance(config)?.logStartSessionEvent(event);
+  // Privacy-first: no external analytics
   if (!isTelemetrySdkInitialized()) return;
 
   const attributes: LogAttributes = {
@@ -75,7 +74,7 @@ export function logCliConfiguration(
 }
 
 export function logUserPrompt(config: Config, event: UserPromptEvent): void {
-  ClearcutLogger.getInstance(config)?.logNewPromptEvent(event);
+  // Privacy-first: no external analytics
   if (!isTelemetrySdkInitialized()) return;
 
   const attributes: LogAttributes = {
@@ -98,7 +97,7 @@ export function logUserPrompt(config: Config, event: UserPromptEvent): void {
 }
 
 export function logToolCall(config: Config, event: ToolCallEvent): void {
-  ClearcutLogger.getInstance(config)?.logToolCallEvent(event);
+  // Privacy-first: no external analytics
   if (!isTelemetrySdkInitialized()) return;
 
   const attributes: LogAttributes = {
@@ -131,7 +130,7 @@ export function logToolCall(config: Config, event: ToolCallEvent): void {
 }
 
 export function logApiRequest(config: Config, event: ApiRequestEvent): void {
-  ClearcutLogger.getInstance(config)?.logApiRequestEvent(event);
+  // Privacy-first: no external analytics
   if (!isTelemetrySdkInitialized()) return;
 
   const attributes: LogAttributes = {
@@ -150,7 +149,7 @@ export function logApiRequest(config: Config, event: ApiRequestEvent): void {
 }
 
 export function logApiError(config: Config, event: ApiErrorEvent): void {
-  ClearcutLogger.getInstance(config)?.logApiErrorEvent(event);
+  // Privacy-first: no external analytics
   if (!isTelemetrySdkInitialized()) return;
 
   const attributes: LogAttributes = {
@@ -186,7 +185,7 @@ export function logApiError(config: Config, event: ApiErrorEvent): void {
 }
 
 export function logApiResponse(config: Config, event: ApiResponseEvent): void {
-  ClearcutLogger.getInstance(config)?.logApiResponseEvent(event);
+  // Privacy-first: no external analytics
   if (!isTelemetrySdkInitialized()) return;
   const attributes: LogAttributes = {
     ...getCommonAttributes(config),

@@ -13,7 +13,7 @@ import {
   EmbedContentParameters,
   GoogleGenAI,
 } from '@google/genai';
-import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js';
+// Privacy-first: code_assist (Google OAuth) removed
 import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
 import { getEffectiveModel } from './modelCheck.js';
 import { LlamaCppClient, LlamaCppMessage } from './llamacppClient.js';
