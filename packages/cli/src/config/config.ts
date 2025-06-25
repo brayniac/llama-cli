@@ -125,7 +125,7 @@ async function parseArguments(): Promise<CliArgs> {
     })
     .option('llamacpp-base-url', {
       type: 'string',
-      description: 'Base URL for llama.cpp server (e.g., http://10.3.0.0:8080). This will be saved to settings for future use.',
+      description: 'Base URL for llama.cpp server (e.g., http://localhost:8080). This will be saved to settings for future use.',
     })
     .option('checkpointing', {
       alias: 'c',

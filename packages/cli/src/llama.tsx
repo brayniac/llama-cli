@@ -306,7 +306,7 @@ async function validateNonInterActiveAuth(
     selectedAuthType = AuthType.USE_LLAMACPP_SERVER;
   } else if (!selectedAuthType) {
     console.error(
-      'Please set LLAMACPP_BASE_URL environment variable (e.g., LLAMACPP_BASE_URL=http://10.3.0.0:8080) or configure llamacppBaseUrl in your settings before running',
+      'Please set LLAMACPP_BASE_URL environment variable (e.g., LLAMACPP_BASE_URL=http://localhost:8080) or configure llamacppBaseUrl in your settings before running',
     );
     process.exit(1);
   }

@@ -12,7 +12,7 @@ export const validateAuthMethod = (authMethod: string): string | null => {
   
   if (authMethod === AuthType.USE_LLAMACPP_SERVER) {
     if (!process.env.LLAMACPP_BASE_URL) {
-      return 'LLAMACPP_BASE_URL environment variable not found. Add that to your .env (e.g., LLAMACPP_BASE_URL=http://10.3.0.0:8080) and try again, no reload needed!';
+      return 'LLAMACPP_BASE_URL environment variable not found. Add that to your .env (e.g., LLAMACPP_BASE_URL=http://localhost:8080) and try again, no reload needed!';
     }
     return null;
   }
