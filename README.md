@@ -21,7 +21,7 @@ LLaMA CLI is a powerful terminal-based tool that connects directly to your local
 2. **Install the CLI:**
 
    ```bash
-   npm install -g llama-cli
+   npm install -g https://github.com/brayniac/llama-cli
    ```
 
 3. **Configure your llama.cpp server URL (choose one method):**
