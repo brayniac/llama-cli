@@ -76,6 +76,7 @@ export const useSlashCommandProcessor = (
   toggleCorgiMode: () => void,
   showToolDescriptions: boolean = false,
   setQuittingMessages: (message: HistoryItem[]) => void,
+  submitQuery?: (query: PartListUnion) => void,
 ) => {
   const session = useSessionStats();
   const gitService = useMemo(() => {
@@ -856,6 +857,224 @@ Add any other context about the problem here.
           setPendingCompressionItem(null);
         },
       },
+      {
+        name: 'test-tools',
+        description: 'test tool-calling functionality. Usage: /test-tools [basic|full|llm]',
+        completion: async () => ['basic', 'full', 'llm', 'debug'],
+        action: async (_mainCommand, _subCommand, _args) => {
+          const testLevel = _subCommand || 'basic';
+          
+          if (!['basic', 'full', 'llm', 'debug'].includes(testLevel)) {
+            addMessage({
+              type: MessageType.ERROR,
+              content: '❌ Invalid test level. Use: basic, full, llm, or debug',
+              timestamp: new Date(),
+            });
+            return;
+          }
+
+          addMessage({
+            type: MessageType.INFO,
+            content: `🔧 Starting ${testLevel} tool-calling functionality test...\n`,
+            timestamp: new Date(),
+          });
+
+          try {
+            // Test 1: Check tool registry availability
+            const toolRegistry = await config?.getToolRegistry();
+            if (!toolRegistry) {
+              addMessage({
+                type: MessageType.ERROR,
+                content: '❌ Tool registry unavailable - tool calling cannot work',
+                timestamp: new Date(),
+              });
+              return;
+            }
+
+            const allTools = toolRegistry.getAllTools();
+            const toolCount = allTools.length;
+            
+            // Show breakdown of tool types
+            const coreTools = allTools.filter((tool) => !('serverName' in tool));
+            const mcpTools = allTools.filter((tool) => ('serverName' in tool));
+            
+            addMessage({
+              type: MessageType.INFO,
+              content: `✅ Tool registry accessible: ${toolCount} tools available (${coreTools.length} core, ${mcpTools.length} MCP)`,
+              timestamp: new Date(),
+            });
+
+            // Test 2: Check client type and capabilities
+            const client = await config?.getGeminiClient();
+            if (!client) {
+              addMessage({
+                type: MessageType.ERROR,
+                content: '❌ No client available - cannot test tool calling',
+                timestamp: new Date(),
+              });
+              return;
+            }
+
+            const model = config?.getModel() || 'unknown';
+            const isLlamaCpp = process.env.LLAMACPP_BASE_URL ? true : false;
+            const backendType = isLlamaCpp ? 'llama.cpp' : 'Gemini';
+            
+            addMessage({
+              type: MessageType.INFO,
+              content: `✅ Client available: ${model} (${backendType} backend)`,
+              timestamp: new Date(),
+            });
+
+            // Test 3: Check if we have basic tools
+            const listTool = allTools.find(tool => tool.name === 'list_directory');
+            const readTool = allTools.find(tool => tool.name === 'read_file');
+            const grepTool = allTools.find(tool => tool.name === 'search_file_content');
+            
+            if (!listTool) {
+              addMessage({
+                type: MessageType.ERROR,
+                content: '❌ Basic list_directory tool not found - tool registration may be broken',
+                timestamp: new Date(),
+              });
+              return;
+            }
+
+            addMessage({
+              type: MessageType.INFO,
+              content: `✅ Basic tools found (list_directory: ✓, read_file: ${readTool ? '✓' : '✗'}, search_file_content: ${grepTool ? '✓' : '✗'})`,
+              timestamp: new Date(),
+            });
+
+            // Basic test stops here
+            if (testLevel === 'basic') {
+              addMessage({
+                type: MessageType.INFO,
+                content: '🎉 Basic test completed successfully! Tool infrastructure is ready.',
+                timestamp: new Date(),
+              });
+              return;
+            }
+
+            // Test 4: Check tool declarations format
+            const toolDeclarations = toolRegistry.getFunctionDeclarations();
+            addMessage({
+              type: MessageType.INFO,
+              content: `✅ Tool declarations generated: ${toolDeclarations.length} function schemas`,
+              timestamp: new Date(),
+            });
+
+            // Full test - attempt a tool call
+            if (testLevel === 'full') {
+              addMessage({
+                type: MessageType.INFO,
+                content: '🧪 Testing direct tool call execution...',
+                timestamp: new Date(),
+              });
+
+              return {
+                shouldScheduleTool: true,
+                toolName: 'list_directory',
+                toolArgs: { path: process.cwd() },
+                message: '🧪 Executing test tool call: list_directory (list directory contents)'
+              };
+            }
+
+            // LLM test - test LLM-initiated tool calling
+            if (testLevel === 'llm') {
+              addMessage({
+                type: MessageType.INFO,
+                content: '🤖 Testing LLM-initiated tool calling...',
+                timestamp: new Date(),
+              });
+              
+              if (!submitQuery) {
+                addMessage({
+                  type: MessageType.ERROR,
+                  content: '❌ submitQuery function not available - cannot send message to LLM',
+                  timestamp: new Date(),
+                });
+                return;
+              }
+              
+              addMessage({
+                type: MessageType.INFO,
+                content: '🚀 Sending message directly to LLM...',
+                timestamp: new Date(),
+              });
+
+              const testMessage = 'Please list the files in the current directory using the appropriate tool. This is a test of LLM-initiated tool calling.';
+              
+              // Send directly to LLM using submitQuery
+              setTimeout(() => {
+                submitQuery(testMessage);
+              }, 100); // Small delay to ensure UI updates are processed
+              
+              return; // Don't return anything - just trigger the direct submission
+            }
+
+            // Debug test - show detailed tool information
+            if (testLevel === 'debug') {
+              addMessage({
+                type: MessageType.INFO,
+                content: '🔍 Debug mode: Tool details...',
+                timestamp: new Date(),
+              });
+
+              // Show all tools list
+              const coreTools = allTools.filter((tool) => !('serverName' in tool));
+              const mcpTools = allTools.filter((tool) => ('serverName' in tool));
+              
+              let toolsList = `📋 All Available Tools (${allTools.length} total):\n\n`;
+              
+              if (coreTools.length > 0) {
+                toolsList += `🔧 Core Tools (${coreTools.length}):\n`;
+                coreTools.forEach((tool, index) => {
+                  toolsList += `  ${index + 1}. ${tool.name} (${tool.displayName})\n`;
+                });
+                toolsList += '\n';
+              }
+              
+              if (mcpTools.length > 0) {
+                toolsList += `🔌 MCP Tools (${mcpTools.length}):\n`;
+                mcpTools.forEach((tool, index) => {
+                  const serverName = 'serverName' in tool ? tool.serverName : 'unknown';
+                  toolsList += `  ${index + 1}. ${tool.name} (${tool.displayName}) [${serverName}]\n`;
+                });
+              }
+              
+              addMessage({
+                type: MessageType.INFO,
+                content: toolsList,
+                timestamp: new Date(),
+              });
+
+              // Show current directory info
+              const cwd = process.cwd();
+              const rootDir = config?.getTargetDir() || 'unknown';
+              
+              addMessage({
+                type: MessageType.INFO,
+                content: `📁 Directory Info:
+• Current Directory: ${cwd}
+• Target Root: ${rootDir}
+• Path is absolute: ${require('path').isAbsolute(cwd)}
+• Within root: ${cwd.startsWith(rootDir)}`,
+                timestamp: new Date(),
+              });
+
+              return;
+            }
+
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            addMessage({
+              type: MessageType.ERROR,
+              content: `❌ Tool-calling test failed: ${errorMessage}`,
+              timestamp: new Date(),
+            });
+          }
+        },
+      },
     ];
 
     if (config?.getCheckpointingEnabled()) {
@@ -1002,6 +1221,7 @@ Add any other context about the problem here.
     setQuittingMessages,
     pendingCompressionItemRef,
     setPendingCompressionItem,
+    submitQuery,
   ]);
 
   const handleSlashCommand = useCallback(

@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { type PartListUnion } from '@google/genai';
 import {
   Box,
   DOMElement,
@@ -249,29 +250,15 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     config.setFlashFallbackHandler(flashFallbackHandler);
   }, [config, addItem]);
 
-  const {
-    handleSlashCommand,
-    slashCommands,
-    pendingHistoryItems: pendingSlashCommandHistoryItems,
-  } = useSlashCommandProcessor(
-    config,
-    settings,
-    history,
-    addItem,
-    clearItems,
-    loadHistory,
-    refreshStatic,
-    setShowHelp,
-    setDebugMessage,
-    openThemeDialog,
-    openAuthDialog,
-    openEditorDialog,
-    performMemoryRefresh,
-    toggleCorgiMode,
-    showToolDescriptions,
-    setQuittingMessages,
-  );
-  const pendingHistoryItems = [...pendingSlashCommandHistoryItems];
+  // Create a ref to hold the submitQuery function
+  const submitQueryRef = useRef<((query: PartListUnion) => void) | null>(null);
+
+  // Create a stable wrapper for submitQuery that can be passed to slash commands
+  const submitQueryWrapper = useCallback((query: PartListUnion) => {
+    if (submitQueryRef.current) {
+      submitQueryRef.current(query);
+    }
+  }, []);
 
   const { rows: terminalHeight, columns: terminalWidth } = useTerminalSize();
   const isInitialMount = useRef(true);
@@ -299,6 +286,84 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     isValidPath,
   });
 
+  // handleExit will be defined after slashCommands is available
+  // useInput will also be moved to after handleExit is defined
+
+  useConsolePatcher({
+    onNewMessage: handleNewMessage,
+    debugMode: config.getDebugMode(),
+  });
+
+  useEffect(() => {
+    if (config) {
+      setGeminiMdFileCount(config.getGeminiMdFileCount());
+    }
+  }, [config]);
+
+  const getPreferredEditor = useCallback(() => {
+    const editorType = settings.merged.preferredEditor;
+    const isValidEditor = isEditorAvailable(editorType);
+    if (!isValidEditor) {
+      openEditorDialog();
+      return;
+    }
+    return editorType as EditorType;
+  }, [settings, openEditorDialog]);
+
+  const onAuthError = useCallback(() => {
+    setAuthError('reauth required');
+    openAuthDialog();
+  }, [openAuthDialog, setAuthError]);
+
+  // Initialize slash command processor with the wrapper
+  const {
+    handleSlashCommand,
+    slashCommands,
+    pendingHistoryItems: pendingSlashCommandHistoryItems,
+  } = useSlashCommandProcessor(
+    config,
+    settings,
+    history,
+    addItem,
+    clearItems,
+    loadHistory,
+    refreshStatic,
+    setShowHelp,
+    setDebugMessage,
+    openThemeDialog,
+    openAuthDialog,
+    openEditorDialog,
+    performMemoryRefresh,
+    toggleCorgiMode,
+    showToolDescriptions,
+    setQuittingMessages,
+    submitQueryWrapper,
+  );
+
+  const {
+    streamingState,
+    submitQuery,
+    initError,
+    pendingHistoryItems: pendingGeminiHistoryItems,
+    thought,
+  } = useGeminiStream(
+    config.getGeminiClient(),
+    history,
+    addItem,
+    setShowHelp,
+    config,
+    setDebugMessage,
+    handleSlashCommand,
+    shellModeActive,
+    getPreferredEditor,
+    onAuthError,
+    performMemoryRefresh,
+  );
+
+  // Update the ref with the actual submitQuery function
+  submitQueryRef.current = submitQuery;
+
+  // Now define handleExit with slashCommands available
   const handleExit = useCallback(
     (
       pressedOnce: boolean,
@@ -328,6 +393,9 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     [slashCommands],
   );
 
+  const pendingHistoryItems = [...pendingGeminiHistoryItems, ...pendingSlashCommandHistoryItems];
+
+  // Now add useInput hook after handleExit is defined
   useInput((input: string, key: InkKeyType) => {
     let enteringConstrainHeightMode = false;
     if (!constrainHeight) {
@@ -373,53 +441,6 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
       setConstrainHeight(false);
     }
   });
-
-  useConsolePatcher({
-    onNewMessage: handleNewMessage,
-    debugMode: config.getDebugMode(),
-  });
-
-  useEffect(() => {
-    if (config) {
-      setGeminiMdFileCount(config.getGeminiMdFileCount());
-    }
-  }, [config]);
-
-  const getPreferredEditor = useCallback(() => {
-    const editorType = settings.merged.preferredEditor;
-    const isValidEditor = isEditorAvailable(editorType);
-    if (!isValidEditor) {
-      openEditorDialog();
-      return;
-    }
-    return editorType as EditorType;
-  }, [settings, openEditorDialog]);
-
-  const onAuthError = useCallback(() => {
-    setAuthError('reauth required');
-    openAuthDialog();
-  }, [openAuthDialog, setAuthError]);
-
-  const {
-    streamingState,
-    submitQuery,
-    initError,
-    pendingHistoryItems: pendingGeminiHistoryItems,
-    thought,
-  } = useGeminiStream(
-    config.getGeminiClient(),
-    history,
-    addItem,
-    setShowHelp,
-    config,
-    setDebugMessage,
-    handleSlashCommand,
-    shellModeActive,
-    getPreferredEditor,
-    onAuthError,
-    performMemoryRefresh,
-  );
-  pendingHistoryItems.push(...pendingGeminiHistoryItems);
   const { elapsedTime, currentLoadingPhrase } =
     useLoadingIndicator(streamingState);
   const showAutoAcceptIndicator = useAutoAcceptIndicator({ config });

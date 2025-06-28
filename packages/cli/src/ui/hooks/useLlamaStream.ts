@@ -242,33 +242,47 @@ export const useLlamaStream = (
             scheduleToolCalls([toolCallRequest], abortSignal);
           }
           return { queryToSend: null, shouldProceed: false }; // Handled by scheduling the tool
+        } else if (
+          typeof slashCommandResult === 'object' &&
+          slashCommandResult.message
+        ) {
+          // Slash command wants to send a message to the LLM (e.g., /test-tools llm)
+          addItem(
+            { type: MessageType.USER, text: slashCommandResult.message },
+            userMessageTimestamp + 1, // Use different timestamp to avoid conflicts
+          );
+          localQueryToSendToGemini = slashCommandResult.message;
+          // Continue processing to send the message to the LLM
         }
 
         if (shellModeActive && handleShellCommand(trimmedQuery, abortSignal)) {
           return { queryToSend: null, shouldProceed: false };
         }
 
-        // Handle @-commands (which might involve tool calls)
-        if (isAtCommand(trimmedQuery)) {
-          const atCommandResult = await handleAtCommand({
-            query: trimmedQuery,
-            config,
-            addItem,
-            onDebugMessage,
-            messageId: userMessageTimestamp,
-            signal: abortSignal,
-          });
-          if (!atCommandResult.shouldProceed) {
-            return { queryToSend: null, shouldProceed: false };
+        // Only process further if we don't already have a query from slash command
+        if (localQueryToSendToGemini === null) {
+          // Handle @-commands (which might involve tool calls)
+          if (isAtCommand(trimmedQuery)) {
+            const atCommandResult = await handleAtCommand({
+              query: trimmedQuery,
+              config,
+              addItem,
+              onDebugMessage,
+              messageId: userMessageTimestamp,
+              signal: abortSignal,
+            });
+            if (!atCommandResult.shouldProceed) {
+              return { queryToSend: null, shouldProceed: false };
+            }
+            localQueryToSendToGemini = atCommandResult.processedQuery;
+          } else {
+            // Normal query for Gemini
+            addItem(
+              { type: MessageType.USER, text: trimmedQuery },
+              userMessageTimestamp,
+            );
+            localQueryToSendToGemini = trimmedQuery;
           }
-          localQueryToSendToGemini = atCommandResult.processedQuery;
-        } else {
-          // Normal query for Gemini
-          addItem(
-            { type: MessageType.USER, text: trimmedQuery },
-            userMessageTimestamp,
-          );
-          localQueryToSendToGemini = trimmedQuery;
         }
       } else {
         // It's a function response (PartListUnion that isn't a string)
