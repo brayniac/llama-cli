@@ -9,11 +9,16 @@ import {
   OpenAIChatCompletionResponse,
   OpenAIChatCompletionMessage,
   LlamaCppModelsResponse,
+  OpenAITool,
+  OpenAIToolCall,
 } from './openaiTypes.js';
 
 export interface LlamaCppMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
+  tool_calls?: OpenAIToolCall[];
+  tool_call_id?: string;
+  name?: string; // Tool name when role is 'tool'
 }
 
 export interface LlamaCppRequest {
@@ -21,11 +26,13 @@ export interface LlamaCppRequest {
   temperature?: number;
   max_tokens?: number;
   stream?: boolean;
+  tools?: OpenAITool[];
 }
 
 export interface LlamaCppResponse {
   content: string;
   model: string;
+  tool_calls?: OpenAIToolCall[];
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -117,6 +124,7 @@ export class LlamaCppClient {
       temperature: request.temperature ?? 0,
       max_tokens: request.max_tokens,
       stream: false,
+      tools: request.tools,
     };
 
     const response = await this.fetchWithTimeout(
@@ -137,13 +145,17 @@ export class LlamaCppClient {
     const openaiResponse: OpenAIChatCompletionResponse = await response.json();
     
     const choice = openaiResponse.choices[0];
-    if (!choice?.message?.content) {
-      throw new Error('No content in response');
+    if (!choice?.message) {
+      throw new Error('No message in response');
     }
 
+    // Check for tool calls in the response
+    const toolCalls = choice.message.tool_calls;
+    
     return {
-      content: choice.message.content,
+      content: choice.message.content || '',
       model: this.displayName,
+      tool_calls: toolCalls,
       usage: openaiResponse.usage ? {
         prompt_tokens: openaiResponse.usage.prompt_tokens,
         completion_tokens: openaiResponse.usage.completion_tokens,
@@ -152,13 +164,14 @@ export class LlamaCppClient {
     };
   }
 
-  async *chatCompletionStream(request: LlamaCppRequest): AsyncGenerator<string> {
+  async *chatCompletionStream(request: LlamaCppRequest): AsyncGenerator<string | { tool_calls: OpenAIToolCall[] }> {
     const openaiRequest: OpenAIChatCompletionRequest = {
       model: this.model,
       messages: request.messages,
       temperature: request.temperature ?? 0,
       max_tokens: request.max_tokens,
       stream: true,
+      tools: request.tools,
     };
 
     const response = await this.fetchWithTimeout(
@@ -183,6 +196,10 @@ export class LlamaCppClient {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    
+    // Tool call accumulation
+    let currentToolCall: Partial<OpenAIToolCall> | null = null;
+    let toolCallAccumulator: OpenAIToolCall[] = [];
 
     try {
       while (true) {
@@ -200,20 +217,63 @@ export class LlamaCppClient {
             const data = trimmed.slice(6);
             
             if (data === '[DONE]') {
+              // Emit final tool calls if any
+              if (currentToolCall && currentToolCall.id) {
+                toolCallAccumulator.push(currentToolCall as OpenAIToolCall);
+              }
+              if (toolCallAccumulator.length > 0) {
+                yield { tool_calls: toolCallAccumulator };
+              }
               return;
             }
             
             try {
               const chunk: OpenAIChatCompletionResponse = JSON.parse(data);
-              const content = chunk.choices[0]?.delta?.content;
-              if (content) {
-                yield content;
+              const delta = chunk.choices[0]?.delta;
+              
+              // Handle content
+              if (delta?.content) {
+                yield delta.content;
+              }
+              
+              // Handle tool calls
+              if (delta?.tool_calls) {
+                for (const toolCallDelta of delta.tool_calls) {
+                  if (toolCallDelta.index === 0 && toolCallDelta.id) {
+                    // New tool call starting
+                    if (currentToolCall && currentToolCall.id) {
+                      toolCallAccumulator.push(currentToolCall as OpenAIToolCall);
+                    }
+                    currentToolCall = {
+                      id: toolCallDelta.id,
+                      type: 'function',
+                      function: { name: '', arguments: '' }
+                    };
+                  }
+                  
+                  if (currentToolCall) {
+                    if (toolCallDelta.function?.name) {
+                      currentToolCall.function!.name += toolCallDelta.function.name;
+                    }
+                    if (toolCallDelta.function?.arguments) {
+                      currentToolCall.function!.arguments += toolCallDelta.function.arguments;
+                    }
+                  }
+                }
               }
             } catch (error) {
               console.warn('Failed to parse streaming chunk:', error);
             }
           }
         }
+      }
+      
+      // Emit any remaining tool calls
+      if (currentToolCall && currentToolCall.id) {
+        toolCallAccumulator.push(currentToolCall as OpenAIToolCall);
+      }
+      if (toolCallAccumulator.length > 0) {
+        yield { tool_calls: toolCallAccumulator };
       }
     } finally {
       reader.releaseLock();

@@ -17,6 +17,11 @@ import {
 import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
 import { getEffectiveModel } from './modelCheck.js';
 import { LlamaCppClient, LlamaCppMessage } from './llamacppClient.js';
+import {
+  convertGeminiToolsToOpenAI,
+  convertOpenAIToolCallsToGemini,
+  convertToolResponseToGeminiPart,
+} from './toolConversion.js';
 
 /**
  * Interface abstracting the core functionalities for generating content and counting tokens.
@@ -94,10 +99,45 @@ function createLlamaCppContentGenerator(client: LlamaCppClient): ContentGenerato
           messages.push({ role: 'user', content });
         } else if ('role' in content) {
           // It's a Content object
-          const role = content.role === 'model' ? 'assistant' : content.role as 'user' | 'system';
-          const text = content.parts?.map((p: any) => p.text || '').join('\n') || '';
-          if (text.trim()) {
-            messages.push({ role, content: text });
+          const role = content.role === 'model' ? 'assistant' : content.role as 'user' | 'system' | 'tool';
+          let text = '';
+          let functionCalls: any[] = [];
+          
+          // Process parts
+          if (content.parts) {
+            for (const part of content.parts) {
+              if (typeof part === 'string') {
+                text += part;
+              } else if (part.text) {
+                text += part.text;
+              } else if (part.functionCall) {
+                functionCalls.push(part.functionCall);
+              } else if (part.functionResponse) {
+                // Convert function response to tool message
+                messages.push({
+                  role: 'tool',
+                  content: JSON.stringify(part.functionResponse.response.content || part.functionResponse.response),
+                  tool_call_id: part.functionResponse.name,
+                  name: part.functionResponse.name,
+                });
+              }
+            }
+          }
+          
+          // Add message with text and/or tool calls
+          if (text.trim() || functionCalls.length > 0) {
+            const message: LlamaCppMessage = { role, content: text.trim() };
+            if (functionCalls.length > 0 && role === 'assistant') {
+              message.tool_calls = functionCalls.map(fc => ({
+                id: fc.id || `call_${Date.now()}`,
+                type: 'function' as const,
+                function: {
+                  name: fc.name,
+                  arguments: JSON.stringify(fc.args || {}),
+                },
+              }));
+            }
+            messages.push(message);
           }
         } else {
           // It's a Part object
@@ -108,19 +148,38 @@ function createLlamaCppContentGenerator(client: LlamaCppClient): ContentGenerato
         }
       }
 
+      // Extract tools from request config if available (passed via generationConfig.tools)
+      const tools = (request as any).config?.tools ? convertGeminiToolsToOpenAI((request as any).config.tools) : undefined;
+      
       const response = await client.chatCompletion({
         messages,
         temperature: (request as any).config?.temperature,
         max_tokens: (request as any).config?.maxOutputTokens,
+        tools,
       });
 
       const geminiResponse = new GenerateContentResponse();
+      const parts: any[] = [];
+      
+      // Add text content if present
+      if (response.content) {
+        parts.push({ text: response.content });
+      }
+      
+      // Add function calls if present
+      if (response.tool_calls) {
+        const functionCalls = convertOpenAIToolCallsToGemini(response.tool_calls);
+        for (const functionCall of functionCalls) {
+          parts.push({ functionCall });
+        }
+      }
+      
       geminiResponse.candidates = [{
         content: {
           role: 'model',
-          parts: [{ text: response.content }]
+          parts,
         },
-        finishReason: 'STOP' as any,
+        finishReason: response.tool_calls ? 'TOOL_CALLS' : 'STOP' as any,
         index: 0,
       }];
       geminiResponse.usageMetadata = response.usage ? {
@@ -145,10 +204,45 @@ function createLlamaCppContentGenerator(client: LlamaCppClient): ContentGenerato
             messages.push({ role: 'user', content });
           } else if ('role' in content) {
             // It's a Content object
-            const role = content.role === 'model' ? 'assistant' : content.role as 'user' | 'system';
-            const text = content.parts?.map((p: any) => p.text || '').join('\n') || '';
-            if (text.trim()) {
-              messages.push({ role, content: text });
+            const role = content.role === 'model' ? 'assistant' : content.role as 'user' | 'system' | 'tool';
+            let text = '';
+            let functionCalls: any[] = [];
+            
+            // Process parts
+            if (content.parts) {
+              for (const part of content.parts) {
+                if (typeof part === 'string') {
+                  text += part;
+                } else if (part.text) {
+                  text += part.text;
+                } else if (part.functionCall) {
+                  functionCalls.push(part.functionCall);
+                } else if (part.functionResponse) {
+                  // Convert function response to tool message
+                  messages.push({
+                    role: 'tool',
+                    content: JSON.stringify(part.functionResponse.response.content || part.functionResponse.response),
+                    tool_call_id: part.functionResponse.name,
+                    name: part.functionResponse.name,
+                  });
+                }
+              }
+            }
+            
+            // Add message with text and/or tool calls
+            if (text.trim() || functionCalls.length > 0) {
+              const message: LlamaCppMessage = { role, content: text.trim() };
+              if (functionCalls.length > 0 && role === 'assistant') {
+                message.tool_calls = functionCalls.map(fc => ({
+                  id: fc.id || `call_${Date.now()}`,
+                  type: 'function' as const,
+                  function: {
+                    name: fc.name,
+                    arguments: JSON.stringify(fc.args || {}),
+                  },
+                }));
+              }
+              messages.push(message);
             }
           } else {
             // It's a Part object
@@ -159,20 +253,42 @@ function createLlamaCppContentGenerator(client: LlamaCppClient): ContentGenerato
           }
         }
 
+        // Extract tools from request config if available (passed via generationConfig.tools)
+        const tools = (request as any).config?.tools ? convertGeminiToolsToOpenAI((request as any).config.tools) : undefined;
+        
         for await (const chunk of client.chatCompletionStream({
           messages,
           temperature: (request as any).config?.temperature,
           max_tokens: (request as any).config?.maxOutputTokens,
+          tools,
         })) {
           const geminiResponse = new GenerateContentResponse();
-          geminiResponse.candidates = [{
-            content: {
-              role: 'model',
-              parts: [{ text: chunk }]
-            },
-            finishReason: undefined,
-            index: 0,
-          }];
+          
+          if (typeof chunk === 'string') {
+            // Text content
+            geminiResponse.candidates = [{
+              content: {
+                role: 'model',
+                parts: [{ text: chunk }]
+              },
+              finishReason: undefined,
+              index: 0,
+            }];
+          } else if ('tool_calls' in chunk) {
+            // Tool calls
+            const functionCalls = convertOpenAIToolCallsToGemini(chunk.tool_calls);
+            const parts: any[] = functionCalls.map(fc => ({ functionCall: fc }));
+            
+            geminiResponse.candidates = [{
+              content: {
+                role: 'model',
+                parts,
+              },
+              finishReason: 'TOOL_CALLS' as any,
+              index: 0,
+            }];
+          }
+          
           yield geminiResponse;
         }
       })());
