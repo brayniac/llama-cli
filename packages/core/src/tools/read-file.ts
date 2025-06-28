@@ -21,9 +21,9 @@ import {
  */
 export interface ReadFileToolParams {
   /**
-   * The absolute path to the file to read
+   * The path to the file to read (can be absolute or relative)
    */
-  absolute_path: string;
+  path: string;
 
   /**
    * The line number to start reading from (optional)
@@ -52,11 +52,10 @@ export class ReadFileTool extends BaseTool<ReadFileToolParams, ToolResult> {
       'Reads and returns the content of a specified file from the local filesystem. Handles text, images (PNG, JPG, GIF, WEBP, SVG, BMP), and PDF files. For text files, it can read specific line ranges.',
       {
         properties: {
-          absolute_path: {
+          path: {
             description:
-              "The absolute path to the file to read (e.g., '/home/user/project/file.txt'). Relative paths are not supported. You must provide an absolute path.",
+              "The path to the file to read. Can be absolute (e.g., '/home/user/project/file.txt') or relative to the current working directory (e.g., './file.txt' or 'src/main.js').",
             type: 'string',
-            pattern: '^/',
           },
           offset: {
             description:
@@ -69,7 +68,7 @@ export class ReadFileTool extends BaseTool<ReadFileToolParams, ToolResult> {
             type: 'number',
           },
         },
-        required: ['absolute_path'],
+        required: ['path'],
         type: 'object',
       },
     );
@@ -86,10 +85,12 @@ export class ReadFileTool extends BaseTool<ReadFileToolParams, ToolResult> {
     ) {
       return 'Parameters failed schema validation.';
     }
-    const filePath = params.absolute_path;
-    if (!path.isAbsolute(filePath)) {
-      return `File path must be absolute, but was relative: ${filePath}. You must provide an absolute path.`;
-    }
+    
+    // Convert relative path to absolute if needed
+    const filePath = path.isAbsolute(params.path) 
+      ? params.path 
+      : path.resolve(this.rootDirectory, params.path);
+    
     if (!isWithinRoot(filePath, this.rootDirectory)) {
       return `File path must be within the root directory (${this.rootDirectory}): ${filePath}`;
     }
@@ -101,9 +102,9 @@ export class ReadFileTool extends BaseTool<ReadFileToolParams, ToolResult> {
     }
 
     const fileService = this.config.getFileService();
-    if (fileService.shouldGeminiIgnoreFile(params.absolute_path)) {
+    if (fileService.shouldGeminiIgnoreFile(filePath)) {
       const relativePath = makeRelative(
-        params.absolute_path,
+        filePath,
         this.rootDirectory,
       );
       return `File path '${shortenPath(relativePath)}' is ignored by .llamaignore pattern(s).`;
@@ -115,12 +116,16 @@ export class ReadFileTool extends BaseTool<ReadFileToolParams, ToolResult> {
   getDescription(params: ReadFileToolParams): string {
     if (
       !params ||
-      typeof params.absolute_path !== 'string' ||
-      params.absolute_path.trim() === ''
+      typeof params.path !== 'string' ||
+      params.path.trim() === ''
     ) {
       return `Path unavailable`;
     }
-    const relativePath = makeRelative(params.absolute_path, this.rootDirectory);
+    // Convert relative path to absolute if needed
+    const filePath = path.isAbsolute(params.path) 
+      ? params.path 
+      : path.resolve(this.rootDirectory, params.path);
+    const relativePath = makeRelative(filePath, this.rootDirectory);
     return shortenPath(relativePath);
   }
 
@@ -136,8 +141,13 @@ export class ReadFileTool extends BaseTool<ReadFileToolParams, ToolResult> {
       };
     }
 
+    // Convert relative path to absolute if needed
+    const filePath = path.isAbsolute(params.path) 
+      ? params.path 
+      : path.resolve(this.rootDirectory, params.path);
+
     const result = await processSingleFileContent(
-      params.absolute_path,
+      filePath,
       this.rootDirectory,
       params.offset,
       params.limit,
@@ -154,13 +164,13 @@ export class ReadFileTool extends BaseTool<ReadFileToolParams, ToolResult> {
       typeof result.llmContent === 'string'
         ? result.llmContent.split('\n').length
         : undefined;
-    const mimetype = getSpecificMimeType(params.absolute_path);
+    const mimetype = getSpecificMimeType(filePath);
     recordFileOperationMetric(
       this.config,
       FileOperation.READ,
       lines,
       mimetype,
-      path.extname(params.absolute_path),
+      path.extname(filePath),
     );
 
     return {
